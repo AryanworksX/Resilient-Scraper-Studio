@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ============================================================
+   DESIGN SYSTEM — Radar Dashboard (Light Forest Teal Theme)
+   ============================================================ */
+
+@theme {
+  /* ---- Light Palette ---- */
+  --color-bg-primary: #F4F6F8;
+  --color-bg-secondary: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-bg-card-hover: #F8FAFC;
+  --color-bg-elevated: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-border-hover: #CBD5E1;
+  --color-border-subtle: #F1F5F9;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+
+  /* Forest Teal Brand Accents */
+  --color-accent-teal: #1A7363;
+  --color-accent-teal-hover: #145C4F;
+  --color-accent-teal-light: #E6F4F1;
+  --color-accent-teal-border: #BCE3DB;
+
+  --color-accent-orange: #E07A5F;
+  --color-accent-amber: #D97706;
+  --color-accent-green: #10B981;
+  --color-accent-red: #EF4444;
+  --color-accent-rose: #E11D48;
+  --color-accent-violet: #7C3AED;
+
+  /* ---- Font ---- */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* ---- Border Radius ---- */
+  --radius-card: 16px;
+  --radius-badge: 8px;
+  --radius-button: 10px;
+  --radius-input: 10px;
+  --radius-modal: 20px;
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+
+::selection {
+  background: rgba(26, 115, 99, 0.15);
+  color: var(--color-text-primary);
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--color-border-hover);
+}
+
+.card-interactive:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes breathing {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 0 6px rgba(217, 119, 6, 0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(26, 115, 99, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(26, 115, 99, 0.3);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-breathing {
+  animation: breathing 2s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #F1F5F9 25%,
+    #E2E8F0 50%,
+    #F1F5F9 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-badge);
+}
+
+/* ============================================================
+   CHART OVERRIDES
+   ============================================================ */
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #F1F5F9 !important;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
