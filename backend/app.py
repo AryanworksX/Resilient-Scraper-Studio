@@ -1,7 +1,9 @@
 from flask import Flask, jsonify, request
-from file1 import get_all_items, init_db, process_and_save
+from flask_cors import CORS
+from db import get_all_items, init_db, process_and_save
 
 app = Flask(__name__)
+CORS(app)  # allow the Vercel-hosted frontend (different domain) to call this API
 init_db()
 
 @app.route("/", methods=["GET"])
