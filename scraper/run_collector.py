@@ -38,7 +38,11 @@ BACKEND_API_URL = os.environ.get("SCRAPER_STUDIO_API_URL", "http://localhost:500
 
 # Prefer a globally-installed `bdata`; fall back to `npx @brightdata/cli`
 # so this works even if the person only ran the CLI via npx during setup.
-CLI_BIN = "bdata" if shutil.which("bdata") else None
+if sys.platform == "win32":
+    CLI_BIN = shutil.which("bdata.cmd")
+else:
+    CLI_BIN = shutil.which("bdata")
+
 CLI_CMD = [CLI_BIN] if CLI_BIN else ["npx", "@brightdata/cli"]
 
 RUN_TIMEOUT_S = 300  # 5 minutes - AI Flow collectors can take a while
@@ -52,19 +56,26 @@ def _require_env():
         ]
         if not val
     ]
+
     if missing:
         raise RuntimeError(
             f"Missing required env vars: {', '.join(missing)}. "
             f"See scraper/.env.example — you get the Collector ID from "
             f"`bdata scraper create <url> \"<fields>\"` (see SCRAPER_STUDIO_GUIDE.md)."
         )
-    if shutil.which("bdata") is None and shutil.which("npx") is None:
+
+    bdata_available = (
+        shutil.which("bdata.cmd") is not None
+        if sys.platform == "win32"
+        else shutil.which("bdata") is not None
+    )
+
+    if not bdata_available and shutil.which("npx") is None:
         raise RuntimeError(
             "Neither `bdata` nor `npx` was found on PATH. Install the CLI with "
             "`npm install -g @brightdata/cli`, or make sure Node/npm is installed "
             "so `npx @brightdata/cli` works."
         )
-
 
 def _extract_rows(cli_json: dict | list) -> list[dict]:
     """The CLI's output envelope has varied across versions - handle the
