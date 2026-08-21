@@ -1,22 +1,20 @@
 """
-Runs a Bright Data Scraper Studio collector via the official `bdata` CLI,
-cleans/filters the results with an LLM (see llm_picker.py), and forwards
-each item into this project's own backend (/api/scrape).
+Runs a Bright Data Scraper Studio collector via the official `bdata` CLI.
 
-The collector itself is NOT built here. Build it once from your own
-terminal (see ../SCRAPER_STUDIO_GUIDE.md), then set its Collector ID
-below via the .env file. This script runs it and pipes the output
-onward — that's the "prompt-to-production pipeline" pattern the
-hackathon docs describe.
+This module can be used in two ways:
 
-Why this shells out to `bdata` instead of calling Bright Data's HTTP
-API directly: the CLI is Bright Data's own maintained client and
-handles auth, polling, retries, and response-format changes for you.
-Reimplementing that by hand means tracking their API surface manually,
-which is exactly what broke the previous version of this script.
+1. From the command line:
+       python run_collector.py "https://example.com/product"
 
-Usage:
-    python run_collector.py "https://example.com/product/aurora-headphones"
+2. From the Flask backend:
+       from run_collector import scrape_product
+       rows = scrape_product(url)
+
+The scraper itself is responsible for:
+    URL -> Bright Data -> raw rows -> LLM normalization -> clean rows
+
+It does NOT send data directly to Flask or the database.
+The Flask backend is responsible for handling and storing the final data.
 """
 
 import json
@@ -26,42 +24,39 @@ import subprocess
 import sys
 import time
 
-import requests
 from dotenv import load_dotenv
 
 from llm_picker import normalize_and_filter_rows
 
+
 load_dotenv()
 
-COLLECTOR_ID = os.environ.get("BRIGHTDATA_COLLECTOR_ID")  # looks like c_xxxxxxxxxx
-BACKEND_API_URL = os.environ.get("SCRAPER_STUDIO_API_URL", "http://localhost:5000")
 
-# Prefer a globally-installed `bdata`; fall back to `npx @brightdata/cli`
-# so this works even if the person only ran the CLI via npx during setup.
+COLLECTOR_ID = os.environ.get("BRIGHTDATA_COLLECTOR_ID")
+
+
+# Windows needs bdata.cmd.
+# Linux/macOS normally use bdata.
 if sys.platform == "win32":
     CLI_BIN = shutil.which("bdata.cmd")
 else:
     CLI_BIN = shutil.which("bdata")
 
+
 CLI_CMD = [CLI_BIN] if CLI_BIN else ["npx", "@brightdata/cli"]
 
-RUN_TIMEOUT_S = 300  # 5 minutes - AI Flow collectors can take a while
+
+# Bright Data AI Flow collectors can take some time.
+RUN_TIMEOUT_S = 300
 
 
 def _require_env():
-    missing = [
-        name
-        for name, val in [
-            ("BRIGHTDATA_COLLECTOR_ID", COLLECTOR_ID),
-        ]
-        if not val
-    ]
+    """Validate the environment before attempting a scrape."""
 
-    if missing:
+    if not COLLECTOR_ID:
         raise RuntimeError(
-            f"Missing required env vars: {', '.join(missing)}. "
-            f"See scraper/.env.example — you get the Collector ID from "
-            f"`bdata scraper create <url> \"<fields>\"` (see SCRAPER_STUDIO_GUIDE.md)."
+            "BRIGHTDATA_COLLECTOR_ID is not set. "
+            "Add it to scraper/.env."
         )
 
     bdata_available = (
@@ -70,99 +65,196 @@ def _require_env():
         else shutil.which("bdata") is not None
     )
 
-    if not bdata_available and shutil.which("npx") is None:
+    npx_available = shutil.which("npx") is not None
+
+    if not bdata_available and not npx_available:
         raise RuntimeError(
-            "Neither `bdata` nor `npx` was found on PATH. Install the CLI with "
-            "`npm install -g @brightdata/cli`, or make sure Node/npm is installed "
-            "so `npx @brightdata/cli` works."
+            "Neither bdata nor npx was found on PATH. "
+            "Install the Bright Data CLI with "
+            "`npm install -g @brightdata/cli`, "
+            "or make sure Node.js/npm is installed."
         )
 
+
 def _extract_rows(cli_json: dict | list) -> list[dict]:
-    """The CLI's output envelope has varied across versions - handle the
-    shapes documented/observed so this doesn't silently break on a minor
-    version bump. Adjust here first if `bdata` changes its output again."""
+    """
+    Extract the rows array from the CLI response.
+
+    Bright Data CLI output can use different envelopes depending
+    on the CLI/version, so we support the known response shapes.
+    """
+
     if isinstance(cli_json, list):
         return cli_json
+
     if isinstance(cli_json, dict):
         for key in ("result", "data", "rows", "preview_result"):
-            val = cli_json.get(key)
-            if isinstance(val, list):
-                return val
+            value = cli_json.get(key)
+
+            if isinstance(value, list):
+                return value
+
     raise ValueError(
-        f"Could not find a rows array in CLI output. Got: {json.dumps(cli_json)[:500]}"
+        "Could not find a rows array in CLI output. "
+        f"Received: {json.dumps(cli_json)[:500]}"
     )
 
 
 def run_collector(url: str) -> list[dict]:
-    """Runs the collector against one URL via the official CLI and
-    returns the raw rows (before LLM cleanup)."""
-    # --pretty is the flag confirmed in the hackathon's own CLI examples for
-    # `scraper run`. It still prints valid JSON (just indented), so the
-    # json.loads() below works the same either way.
-    cmd = CLI_CMD + ["scraper", "run", COLLECTOR_ID, url, "--pretty"]
-    print(f"Running: {' '.join(cmd)}")
+    """
+    Run the Bright Data collector against one URL.
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=RUN_TIMEOUT_S,
-    )
+    Returns:
+        Raw rows returned by Bright Data.
+    """
+
+    _require_env()
+
+    if not url or not isinstance(url, str):
+        raise ValueError("A valid URL is required.")
+
+    url = url.strip()
+
+    if not url.startswith(("http://", "https://")):
+        raise ValueError(
+            "URL must start with http:// or https://"
+        )
+
+    command = CLI_CMD + [
+        "scraper",
+        "run",
+        COLLECTOR_ID,
+        url,
+        "--pretty",
+    ]
+
+    print(f"Running: {' '.join(command)}")
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=RUN_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"Bright Data scraper timed out after "
+            f"{RUN_TIMEOUT_S} seconds."
+        ) from exc
 
     if result.returncode != 0:
+        error_output = result.stderr or result.stdout
+
         raise RuntimeError(
-            f"`bdata scraper run` failed (exit {result.returncode}):\n"
-            f"{result.stderr or result.stdout}"
+            "`bdata scraper run` failed "
+            f"(exit {result.returncode}):\n"
+            f"{error_output}"
         )
 
     try:
         cli_json = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
+
+    except json.JSONDecodeError as exc:
         raise ValueError(
-            f"Could not parse CLI output as JSON:\n{result.stdout}"
-        ) from e
+            "Could not parse Bright Data CLI output as JSON:\n"
+            f"{result.stdout}"
+        ) from exc
 
     return _extract_rows(cli_json)
 
 
 def to_backend_item(row: dict) -> dict:
-    """By the time a row reaches here it's already been normalized by
-    llm_picker.py onto {title, price, stock} - this just adds the
-    timestamp and guards against any field the LLM left out."""
+    """
+    Convert an LLM-normalized row into the format expected
+    by the Flask backend/database.
+    """
+
     return {
         "title": row.get("title", "Unknown"),
         "price": float(row.get("price") or 0),
         "stock": row.get("stock") or "Unknown",
-        "scraped_at": row.get("scraped_at") or time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "scraped_at": row.get("scraped_at")
+        or time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
 
-def forward_to_backend(item: dict):
-    resp = requests.post(f"{BACKEND_API_URL}/api/scrape", json=item, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+def scrape_product(url: str) -> list[dict]:
+    """
+    Complete scraping pipeline.
+
+    URL
+      ↓
+    Bright Data
+      ↓
+    Raw rows
+      ↓
+    LLM filtering/normalization
+      ↓
+    Backend-ready rows
+
+    This function DOES NOT send anything to Flask.
+
+    It simply returns the cleaned data so that Flask can decide
+    what to do with it.
+    """
+
+    print(f"Starting scrape for: {url}")
+
+    raw_rows = run_collector(url)
+
+    print(
+        f"Bright Data returned "
+        f"{len(raw_rows)} raw row(s)."
+    )
+
+    print(
+        "Sending rows through the LLM picker "
+        "(filter + normalize)..."
+    )
+
+    clean_rows = normalize_and_filter_rows(raw_rows)
+
+    print(
+        f"{len(clean_rows)} row(s) kept "
+        "after filtering/normalizing."
+    )
+
+    backend_rows = [
+        to_backend_item(row)
+        for row in clean_rows
+    ]
+
+    return backend_rows
 
 
 def main():
-    _require_env()
+    """
+    Command-line entry point.
+
+    This keeps local/manual testing working.
+    """
+
     if len(sys.argv) < 2:
-        print('Usage: python run_collector.py "<product-url>"')
+        print(
+            'Usage: python run_collector.py "<product-url>"'
+        )
         sys.exit(1)
 
     target_url = sys.argv[1]
 
-    print(f"Running collector {COLLECTOR_ID} for {target_url} ...")
-    raw_rows = run_collector(target_url)
-    print(f"Got {len(raw_rows)} raw row(s) from the collector.")
+    try:
+        rows = scrape_product(target_url)
 
-    print("Sending rows through the LLM picker (filter + normalize) ...")
-    clean_rows = normalize_and_filter_rows(raw_rows)
-    print(f"{len(clean_rows)} row(s) kept after filtering/normalizing.")
+        print("\nFinal cleaned result:")
+        print(json.dumps(rows, indent=2, ensure_ascii=False))
 
-    for row in clean_rows:
-        item = to_backend_item(row)
-        result = forward_to_backend(item)
-        print(" ->", result)
+    except Exception as exc:
+        print(
+            f"\nScraping failed:\n{exc}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":
