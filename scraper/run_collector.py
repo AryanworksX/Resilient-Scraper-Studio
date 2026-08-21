@@ -1,41 +1,53 @@
 """
-Triggers a Bright Data Scraper Studio collector, waits for the result,
-and forwards each row into this project's own backend (/api/scrape).
+Runs a Bright Data Scraper Studio collector via the official `bdata` CLI,
+cleans/filters the results with an LLM (see llm_picker.py), and forwards
+each item into this project's own backend (/api/scrape).
 
-The collector itself is NOT built here. Build it once from your coding
-agent's terminal (see ../SCRAPER_STUDIO_GUIDE.md), then set its Collector
-ID below via the .env file. This script only runs it and pipes the output
-onward — that's the "prompt-to-production pipeline" pattern the hackathon
-docs describe.
+The collector itself is NOT built here. Build it once from your own
+terminal (see ../SCRAPER_STUDIO_GUIDE.md), then set its Collector ID
+below via the .env file. This script runs it and pipes the output
+onward — that's the "prompt-to-production pipeline" pattern the
+hackathon docs describe.
+
+Why this shells out to `bdata` instead of calling Bright Data's HTTP
+API directly: the CLI is Bright Data's own maintained client and
+handles auth, polling, retries, and response-format changes for you.
+Reimplementing that by hand means tracking their API surface manually,
+which is exactly what broke the previous version of this script.
 
 Usage:
     python run_collector.py "https://example.com/product/aurora-headphones"
 """
 
+import json
 import os
+import shutil
+import subprocess
 import sys
 import time
+
 import requests
 from dotenv import load_dotenv
 
+from llm_picker import normalize_and_filter_rows
+
 load_dotenv()
 
-BRIGHTDATA_API_TOKEN = os.environ.get("BRIGHTDATA_API_TOKEN")
 COLLECTOR_ID = os.environ.get("BRIGHTDATA_COLLECTOR_ID")  # looks like c_xxxxxxxxxx
 BACKEND_API_URL = os.environ.get("SCRAPER_STUDIO_API_URL", "http://localhost:5000")
 
-TRIGGER_URL = "https://api.brightdata.com/dca/trigger"
-DATASET_URL = "https://api.brightdata.com/dca/dataset"
+# Prefer a globally-installed `bdata`; fall back to `npx @brightdata/cli`
+# so this works even if the person only ran the CLI via npx during setup.
+CLI_BIN = "bdata" if shutil.which("bdata") else None
+CLI_CMD = [CLI_BIN] if CLI_BIN else ["npx", "@brightdata/cli"]
 
-POLL_INTERVAL_S = 5
-MAX_POLL_ATTEMPTS = 60  # ~5 minutes
+RUN_TIMEOUT_S = 300  # 5 minutes - AI Flow collectors can take a while
 
 
 def _require_env():
     missing = [
         name
         for name, val in [
-            ("BRIGHTDATA_API_TOKEN", BRIGHTDATA_API_TOKEN),
             ("BRIGHTDATA_COLLECTOR_ID", COLLECTOR_ID),
         ]
         if not val
@@ -46,63 +58,70 @@ def _require_env():
             f"See scraper/.env.example — you get the Collector ID from "
             f"`bdata scraper create <url> \"<fields>\"` (see SCRAPER_STUDIO_GUIDE.md)."
         )
-
-
-def trigger(url: str) -> str:
-    """Kick off a collection run for one URL. Returns a snapshot/response id."""
-    headers = {
-        "Authorization": f"Bearer {BRIGHTDATA_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    resp = requests.post(
-        TRIGGER_URL,
-        params={"collector": COLLECTOR_ID},
-        headers=headers,
-        json=[{"url": url}],
-        timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    # Bright Data returns a response_id/snapshot handle to poll on.
-    return data.get("response_id") or data.get("snapshot_id") or data.get("id")
-
-
-def poll_for_results(response_id: str) -> list[dict]:
-    headers = {"Authorization": f"Bearer {BRIGHTDATA_API_TOKEN}"}
-    for attempt in range(MAX_POLL_ATTEMPTS):
-        resp = requests.get(
-            DATASET_URL,
-            params={"id": response_id},
-            headers=headers,
-            timeout=30,
+    if shutil.which("bdata") is None and shutil.which("npx") is None:
+        raise RuntimeError(
+            "Neither `bdata` nor `npx` was found on PATH. Install the CLI with "
+            "`npm install -g @brightdata/cli`, or make sure Node/npm is installed "
+            "so `npx @brightdata/cli` works."
         )
-        if resp.status_code == 200:
-            data = resp.json()
-            if isinstance(data, list) and len(data) > 0:
-                return data
-        elif resp.status_code >= 500:
-            pass  # transient, keep polling
-        else:
-            resp.raise_for_status()
 
-        time.sleep(POLL_INTERVAL_S)
 
-    raise TimeoutError(
-        f"No results after {MAX_POLL_ATTEMPTS * POLL_INTERVAL_S}s — "
-        f"check the collector in the Scraper Studio dashboard."
+def _extract_rows(cli_json: dict | list) -> list[dict]:
+    """The CLI's output envelope has varied across versions - handle the
+    shapes documented/observed so this doesn't silently break on a minor
+    version bump. Adjust here first if `bdata` changes its output again."""
+    if isinstance(cli_json, list):
+        return cli_json
+    if isinstance(cli_json, dict):
+        for key in ("result", "data", "rows", "preview_result"):
+            val = cli_json.get(key)
+            if isinstance(val, list):
+                return val
+    raise ValueError(
+        f"Could not find a rows array in CLI output. Got: {json.dumps(cli_json)[:500]}"
     )
+
+
+def run_collector(url: str) -> list[dict]:
+    """Runs the collector against one URL via the official CLI and
+    returns the raw rows (before LLM cleanup)."""
+    # --pretty is the flag confirmed in the hackathon's own CLI examples for
+    # `scraper run`. It still prints valid JSON (just indented), so the
+    # json.loads() below works the same either way.
+    cmd = CLI_CMD + ["scraper", "run", COLLECTOR_ID, url, "--pretty"]
+    print(f"Running: {' '.join(cmd)}")
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=RUN_TIMEOUT_S,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"`bdata scraper run` failed (exit {result.returncode}):\n"
+            f"{result.stderr or result.stdout}"
+        )
+
+    try:
+        cli_json = json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Could not parse CLI output as JSON:\n{result.stdout}"
+        ) from e
+
+    return _extract_rows(cli_json)
 
 
 def to_backend_item(row: dict) -> dict:
-    """
-    Map whatever fields the collector returns onto the shape backend/db.py
-    expects. Adjust the .get() keys below to match the schema you asked
-    for when you ran `bdata scraper create`.
-    """
+    """By the time a row reaches here it's already been normalized by
+    llm_picker.py onto {title, price, stock} - this just adds the
+    timestamp and guards against any field the LLM left out."""
     return {
-        "title": row.get("title") or row.get("product_name") or row.get("name"),
+        "title": row.get("title", "Unknown"),
         "price": float(row.get("price") or 0),
-        "stock": row.get("stock") or row.get("availability") or "Unknown",
+        "stock": row.get("stock") or "Unknown",
         "scraped_at": row.get("scraped_at") or time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
@@ -121,14 +140,15 @@ def main():
 
     target_url = sys.argv[1]
 
-    print(f"Triggering collector {COLLECTOR_ID} for {target_url} ...")
-    response_id = trigger(target_url)
-    print(f"Triggered. Polling for results (response_id={response_id}) ...")
+    print(f"Running collector {COLLECTOR_ID} for {target_url} ...")
+    raw_rows = run_collector(target_url)
+    print(f"Got {len(raw_rows)} raw row(s) from the collector.")
 
-    rows = poll_for_results(response_id)
-    print(f"Got {len(rows)} row(s). Forwarding to {BACKEND_API_URL}/api/scrape ...")
+    print("Sending rows through the LLM picker (filter + normalize) ...")
+    clean_rows = normalize_and_filter_rows(raw_rows)
+    print(f"{len(clean_rows)} row(s) kept after filtering/normalizing.")
 
-    for row in rows:
+    for row in clean_rows:
         item = to_backend_item(row)
         result = forward_to_backend(item)
         print(" ->", result)
