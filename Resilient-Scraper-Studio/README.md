@@ -1,14 +1,14 @@
 # Resilient Scraper Studio
 
-An autonomous, prompt-to-production web scraping and price telemetry platform powered by Bright Data AI Flow, deterministic Python schema standardizers, and Supabase real-time persistence.
+An autonomous price-tracking platform: Bright Data AI Flow builds and self-heals the scrapers, a Python pipeline normalizes the data into a consistent schema, and Supabase stores it with real-time updates to the dashboard.
 
 ---
 
 ## ⚡ Overview
 
-Traditional web scrapers break whenever target sites mutate their CSS selectors or DOM layout. **Resilient Scraper Studio** eliminates brittle selector maintenance by leveraging Bright Data AI Collectors and autonomous self-repair heuristics.
+Resilient Scraper Studio solves a common problem with web scrapers: they break the moment a target site changes its layout. Instead of hand-written selectors that need constant maintenance, it uses Bright Data AI Collectors to build and automatically repair extraction logic when a site's HTML changes.
 
-Extracted records stream directly through a deterministic Python normalizer into Supabase, maintaining an ongoing history of price shifts, stock recoveries, and catalog updates.
+Every scraped record flows through a Python normalization step into Supabase, which keeps an ongoing history of price changes, restocks, and catalog updates over time.
 
 ---
 
