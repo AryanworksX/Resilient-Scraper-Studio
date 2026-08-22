@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RESILIENT SCRAPER STUDIO</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Kinetic Cursor -->
+  <div class="cursor-dot"></div>
+  <div class="cursor-outline"></div>
+
+  <!-- Realtime WebGL Viewport -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Ambient Light Orbs -->
+  <div class="ambient-glow orb-1"></div>
+  <div class="ambient-glow orb-2"></div>
+  <div class="ambient-glow orb-3"></div>
+
+  <!-- Glass Top Navigation -->
+  <nav>
+    <div class="logo">
+      <div class="logo-gem">⬡</div>
+      RESILIENT<span class="logo-sub">SCRAPER STUDIO</span>
+      <span class="logo-badge">PROMPT-TO-PROD</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#about-product" class="hover-trigger">Architecture</a></li>
+      <li><a href="#pipeline" class="hover-trigger">Self-Heal Engine</a></li>
+      <li><a href="#how-it-works" class="hover-trigger">Lifecycle</a></li>
+      <li><a href="#dashboard" class="hover-trigger">Command Deck</a></li>
+    </ul>
+    <div style="display: flex; gap: 0.8rem; align-items: center;">
+      <button class="liquid-btn liquid-btn-primary hover-trigger" id="open-add-modal-btn">
+        <span class="btn-sparkle">✦</span> Track Product
+      </button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- 01: CINEMATIC HERO SECTION -->
+    <section class="hero">
+      <div class="hero-chip-pill">
+        <span class="pulse-chip"></span>
+        <span>BRIGHT DATA AI COLLECTORS • AUTONOMOUS TELEMETRY</span>
+      </div>
+      
+      <h1 class="hero-title">
+        Self-healing web telemetry <span class="gradient-text">at scale.</span>
+      </h1>
+      
+      <p class="hero-desc">
+        Continuous price intelligence powered by Bright Data AI Flow, deterministic schema normalizers, and instant Supabase delta mutation tracking[cite: 1].
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="#dashboard" class="liquid-btn liquid-btn-primary hover-trigger" style="text-decoration: none;">
+          ⚡ Launch Live Radar
+        </a>
+        <a href="#pipeline" class="liquid-btn liquid-btn-glass hover-trigger" style="text-decoration: none;">
+          Inspect Healing Engine →
+        </a>
+      </div>
+
+      <!-- Quick Metrics Ribbon -->
+      <div class="hero-specs-ribbon">
+        <div class="spec-item">
+          <span class="spec-val">0.0 ms</span>
+          <span class="spec-lbl">Human Regex Maintenance</span>
+        </div>
+        <div class="spec-divider"></div>
+        <div class="spec-item">
+          <span class="spec-val">100%</span>
+          <span class="spec-lbl">DOM Mutation Healing</span>
+        </div>
+        <div class="spec-divider"></div>
+        <div class="spec-item">
+          <span class="spec-val">Cloud API</span>
+          <span class="spec-lbl">Direct Web Unlocker Mesh</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Marquee Track 1 -->
+    <div class="marquee-container">
+      <div class="marquee-track">
+        <span>BRIGHT DATA COLLECTOR</span>
+        <span class="highlight">✦</span>
+        <span>SELF-HEALING AST REPAIR</span>
+        <span class="highlight">✦</span>
+        <span>DELTA PRICE RADAR</span>
+        <span class="highlight">✦</span>
+        <span>SUPABASE INGESTION</span>
+        <span class="highlight">✦</span>
+        <span>BRIGHT DATA COLLECTOR</span>
+        <span class="highlight">✦</span>
+        <span>SELF-HEALING AST REPAIR</span>
+      </div>
+    </div>
+
+    <!-- 02: ARCHITECTURE & CRYSTALLIZATION STORY -->
+    <section class="product-story" id="about-product">
+      <div>
+        <div class="tagline">Prompt-to-Production Pipeline</div>
+        <h2 class="story-heading">
+          Where chaotic web markup <span>crystallizes</span> into clean structured data.
+        </h2>
+        <div style="margin-top: 1.8rem; display: flex; flex-direction: column; gap: 1.2rem; color: var(--text-muted); font-size: 1.02rem; line-height: 1.7;">
+          <p>
+            Standard web scrapers crash whenever e-commerce sites update DOM structures or deploy anti-bot defenses[cite: 1]. Our engine combines Bright Data's AI Flow collectors with deterministic Python parsing, ensuring zero LLM hallucinations and continuous pipeline uptime[cite: 1].
+          </p>
+          <p>
+            Every product snapshot streams into Supabase, maintaining an ongoing history of price shifts, stock recoveries, and market catalog mutations[cite: 1].
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Specular Card Showcase -->
+      <div class="glass-card feature-showcase-box">
+        <div class="feature-badge">⚡ RESILIENT TELEMETRY STACK</div>
+        <div class="stack-grid">
+          <div class="stack-item">
+            <div class="stack-icon">🔮</div>
+            <div>
+              <div class="stack-title">AI Natural Language Collectors</div>
+              <div class="stack-desc">Generate production-grade scrapers from plain English prompts without writing brittle selectors[cite: 1].</div>
+            </div>
+          </div>
+          <div class="stack-item">
+            <div class="stack-icon">🛠️</div>
+            <div>
+              <div class="stack-title">bdata scraper heal Heuristics</div>
+              <div class="stack-desc">Autonomous AST mutation patching fixes broken layout selectors on the fly[cite: 1].</div>
+            </div>
+          </div>
+          <div class="stack-item">
+            <div class="stack-icon">🛡️</div>
+            <div>
+              <div class="stack-title">Proxy Mesh & Unlocker</div>
+              <div class="stack-desc">Enterprise-grade network bypassing CAPTCHAs, bot detections, and geo-restrictions.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03: CODE DIFF & SELF-HEALING ENGINE (Interactive Proof) -->
+    <section class="pipeline-section" id="pipeline">
+      <div class="section-header-center">
+        <div class="tagline">Deterministic Self-Repair</div>
+        <h2 class="section-title">How bdata Self-Heals Scrapes</h2>
+        <p style="color: var(--text-muted); max-width: 620px; margin: 0.8rem auto 0 auto; font-size: 0.95rem; line-height: 1.6;">
+          When an e-commerce platform alters its HTML hierarchy, the collector auto-patches itself via heuristic AST regeneration without downtime[cite: 1].
+        </p>
+      </div>
+
+      <div class="diff-terminal-container glass-card">
+        <div class="diff-terminal-header">
+          <div style="display: flex; gap: 0.4rem;">
+            <span class="t-dot red"></span><span class="t-dot yellow"></span><span class="t-dot green"></span>
+          </div>
+          <span class="terminal-title-bar">diff --git a/collector_ast.js b/collector_ast_healed.js</span>
+          <span class="pill in-stock" style="font-size: 0.65rem;">Self-Healed 200 OK</span>
+        </div>
+        <div class="diff-terminal-body">
+          <div class="diff-line comment">// [MUTATION DETECTED]: E-Commerce platform updated product page markup[cite: 1]</div>
+          <div class="diff-line del">- const priceElem = document.querySelector('.pdp-price-old-val'); // Returned NULL (Broken)</div>
+          <div class="diff-line add">+ const priceElem = document.querySelector('[data-qa="product-price"], .goods-price'); // Auto-Patched</div>
+          <div class="diff-line comment">// [PARSER NORMALIZATION]: Deterministic float conversion with stock delta tagging</div>
+          <div class="diff-line neutral">  const normalizedPrice = parseFloat(priceElem.innerText.replace(/[^0-9.]/g, ''));</div>
+          <div class="diff-line neutral">  await supabase.from('items').insert({ price: normalizedPrice, stock: 'In Stock' });[cite: 1]</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04: PIPELINE LIFECYCLE STEPS -->
+    <section class="how-it-works-container" id="how-it-works">
+      <div class="how-it-works-sticky">
+        <div>
+          <div class="tagline">Operational Lifecycle</div>
+          <h2 class="section-title">Prompt to Production</h2>
+          <p style="color: var(--text-muted); margin-top: 1rem; max-width: 320px; line-height: 1.6;">
+            A three-phase prompt-to-production pipeline delivering continuous data reliability[cite: 1].
+          </p>
+          <div class="step-indicator" id="step-number">01</div>
+        </div>
+        <div class="steps-stack">
+          <div class="step-card active" data-step="01">
+            <div class="step-tag">Phase 01 — Bright Data Collector Trigger</div>
+            <h3 class="step-title">Autonomous Ingestion & Healing</h3>
+            <p class="step-desc">
+              <code>run_collector.py</code> executes the Bright Data Direct Cloud API to extract unstructured product data[cite: 1]. If layout mutations or anti-bot defenses trigger null values, AST healing dynamically repairs the collector pipeline[cite: 1].
+            </p>
+          </div>
+          <div class="step-card" data-step="02">
+            <div class="step-tag">Phase 02 — Data Normalization</div>
+            <h3 class="step-title">Deterministic Schema Standardizer</h3>
+            <p class="step-desc">
+              Clean regex extraction casts arbitrary raw values into verified numeric floats and standardized stock states without external LLM API dependencies.
+            </p>
+          </div>
+          <div class="step-card" data-step="03">
+            <div class="step-tag">Phase 03 — Delta Engine & Supabase</div>
+            <h3 class="step-title">Price Drop & Restock Intelligence</h3>
+            <p class="step-desc">
+              The Flask API receives the payload, compares it with the previous snapshot in Supabase, tags mutations (<code>price_drop</code>, <code>restock</code>, <code>new_item</code>), and reflects changes live on this telemetry console[cite: 1].
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Marquee Track 2 -->
+    <div class="marquee-container">
+      <div class="marquee-track reverse">
+        <span>SUPABASE PERSISTENCE</span>
+        <span class="highlight">✦</span>
+        <span>FLASK REST API</span>
+        <span class="highlight">✦</span>
+        <span>SELF-HEALING AST</span>
+        <span class="highlight">✦</span>
+        <span>DELTA RADAR ENGINE</span>
+        <span class="highlight">✦</span>
+        <span>SUPABASE PERSISTENCE</span>
+      </div>
+    </div>
+
+    <!-- 05: LIQUID GLASS TELEMETRY COMMAND DECK -->
+    <section class="dashboard-section" id="dashboard">
+      
+      <!-- Command Deck Header Bar -->
+      <div class="dashboard-header-deck">
+        <div>
+          <div class="tagline">Real-Time Telemetry Matrix</div>
+          <h2 class="section-title" style="font-size: clamp(2rem, 3.6vw, 2.8rem);">Fleet Command Console</h2>
+        </div>
+        <div class="header-action-group">
+          <button class="liquid-btn liquid-btn-primary hover-trigger" id="header-add-btn">
+            + Add Product
+          </button>
+          <button class="liquid-btn liquid-btn-glass hover-trigger" id="refresh-btn">
+            ⚡ Sync Database
+          </button>
+          <div class="liquid-status-badge">
+            <div class="pulse-ring"><div class="status-dot" id="api-dot"></div></div>
+            <span id="api-status-text">Connecting...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Stat Volumetric Glass Cards Row -->
+      <div class="metrics-grid">
+        <div class="glass-card metric-card">
+          <div class="metric-card-inner">
+            <div class="metric-head">
+              <span class="metric-label">Monitored SKUs</span>
+              <span class="metric-badge-icon">📡</span>
+            </div>
+            <div class="metric-value" id="stat-tracked-num">0</div>
+            <div class="metric-sub">● Fleet Targets Active</div>
+          </div>
+        </div>
+
+        <div class="glass-card metric-card">
+          <div class="metric-card-inner">
+            <div class="metric-head">
+              <span class="metric-label">Price Drops</span>
+              <span class="metric-badge-icon" style="color: var(--success);">▼</span>
+            </div>
+            <div class="metric-value" style="color: var(--success);" id="stat-drops-num">0</div>
+            <div class="metric-sub">▼ Buy Opportunities</div>
+          </div>
+        </div>
+
+        <div class="glass-card metric-card">
+          <div class="metric-card-inner">
+            <div class="metric-head">
+              <span class="metric-label">Restocks</span>
+              <span class="metric-badge-icon" style="color: var(--warning);">↺</span>
+            </div>
+            <div class="metric-value" style="color: var(--warning);" id="stat-restocks-num">0</div>
+            <div class="metric-sub">↺ Warehouse Inflows</div>
+          </div>
+        </div>
+
+        <div class="glass-card metric-card highlight-card">
+          <div class="metric-card-inner">
+            <div class="metric-head">
+              <span class="metric-label">Collector Mesh</span>
+              <span class="metric-badge-icon" style="color: var(--accent-cyan);">✦</span>
+            </div>
+            <div class="metric-value" style="color: var(--accent-cyan);" id="stat-health-num">100%</div>
+            <div class="metric-sub">✓ Web Unlocker Active</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Command Console Workspace -->
+      <div class="dashboard-split-grid">
+        
+        <!-- Left: Tracked Products Fleet -->
+        <div class="glass-card" style="min-height: 560px; padding: 2.2rem;">
+          <div class="card-head">
+            <div>
+              <h3 class="panel-title">Tracked Product Fleet</h3>
+              <p class="panel-desc">Click any product row to open the deep historical analytics studio[cite: 4].</p>
+            </div>
+            <div class="cyber-counter">TOTAL MONITORED: <strong id="fleet-count-tag">0</strong></div>
+          </div>
+
+          <div class="products-fleet-list" id="products-fleet-container">
+            <!-- Dynamically Rendered -->
+          </div>
+        </div>
+
+        <!-- Right: Real-time Delta Stream & Self-Healing Terminal -->
+        <div style="display: flex; flex-direction: column; gap: 1.8rem;">
+          
+          <!-- Live Activity Feed -->
+          <div class="glass-card" style="padding: 1.8rem;">
+            <div class="card-head" style="margin-bottom: 1rem;">
+              <div>
+                <h3 class="panel-title" style="font-size: 1.2rem;">Live Delta Events</h3>
+                <p class="panel-desc">Real-time mutation stream from Supabase.</p>
+              </div>
+              <span class="pill in-stock" style="font-size: 0.65rem;">Live Feed</span>
+            </div>
+            <div class="activity-stream" id="activity-stream-list"></div>
+          </div>
+
+          <!-- Self-Healing Proof Terminal -->
+          <div class="glass-card" style="padding: 1.8rem;">
+            <div class="card-head" style="margin-bottom: 0.8rem;">
+              <div>
+                <h3 class="panel-title" style="font-size: 1.2rem;">Autonomous Self-Heal</h3>
+                <p class="panel-desc">Bright Data AI Flow telemetry proof.</p>
+              </div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--success); display: flex; align-items: center; gap: 0.4rem;">
+                <span class="status-dot online"></span> 200 OK
+              </div>
+            </div>
+
+            <div class="terminal-box">
+              <div class="terminal-header">
+                <span class="t-dot red"></span><span class="t-dot yellow"></span><span class="t-dot green"></span>
+                <span class="t-title">bdata_collector_telemetry.log</span>
+              </div>
+              <div class="terminal-body" id="scraper-heal-log">
+                [HEAL_MESH]: Collector c_mt3aabpqho14bvw04 active.<br/>
+                [STATUS]: Anti-bot mesh bypass verified. Ingestion streaming into Supabase table [items][cite: 1].
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div>&copy; 2026 BRIGHT DATA SCRAPER STUDIO • MERCURY PRICE RADAR FLEET[cite: 1].</div>
+      <div>FLASK REST API + SUPABASE REALTIME PERSISTENCE[cite: 1]</div>
+    </footer>
+  </main>
+
+  <!-- 06: DEEP PRODUCT ANALYTICS STUDIO MODAL -->
+  <div class="modal-backdrop" id="analysis-modal">
+    <div class="glass-modal-window">
+      <button class="modal-close-btn hover-trigger" id="close-modal-btn">✕</button>
+
+      <!-- Modal Header -->
+      <div class="modal-header-section">
+        <div>
+          <div class="tagline">SKU Deep Telemetry</div>
+          <h2 class="section-title" id="modal-product-title" style="font-size: clamp(1.8rem, 3vw, 2.4rem);">Product Title</h2>
+          <div style="display: flex; gap: 0.8rem; align-items: center; margin-top: 0.4rem;">
+            <span class="prod-domain-badge" id="modal-product-website">store.marketplace.com</span>
+            <span class="pill" id="modal-product-stock">In Stock</span>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div class="prod-price" id="modal-current-price" style="font-size: 2.4rem; color: #fff;">$0.00</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono';" id="modal-last-scraped">Active Snapshot</div>
+        </div>
+      </div>
+
+      <!-- 4 Meta Boxes -->
+      <div class="analysis-meta-grid">
+        <div class="glass-mini-box">
+          <div class="metric-label">Historical Low</div>
+          <div class="metric-value" style="font-size: 1.6rem; color: var(--success);" id="modal-low-price">$0.00</div>
+          <div class="metric-sub" style="font-size: 0.7rem;">Lowest observed price</div>
+        </div>
+        <div class="glass-mini-box">
+          <div class="metric-label">Historical High</div>
+          <div class="metric-value" style="font-size: 1.6rem; color: var(--danger);" id="modal-high-price">$0.00</div>
+          <div class="metric-sub" style="font-size: 0.7rem;">Peak market listing</div>
+        </div>
+        <div class="glass-mini-box">
+          <div class="metric-label">Average Mean</div>
+          <div class="metric-value" style="font-size: 1.6rem; color: var(--accent-cyan);" id="modal-avg-price">$0.00</div>
+          <div class="metric-sub" style="font-size: 0.7rem;">Rolling arithmetic mean</div>
+        </div>
+        <div class="glass-mini-box">
+          <div class="metric-label">Total Ingestions</div>
+          <div class="metric-value" style="font-size: 1.6rem; color: var(--accent);" id="modal-total-snaps">0</div>
+          <div class="metric-sub" style="font-size: 0.7rem;">Telemetry points saved</div>
+        </div>
+      </div>
+
+      <!-- Vibrant Line Chart -->
+      <div class="chart-glass-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+          <h4 style="font-family: 'Syne', sans-serif; font-size: 1.1rem; color: #fff;">Price Variance Trajectory</h4>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">
+            Interpolation: <strong style="color: var(--accent);">Cubic Spline</strong>
+          </span>
+        </div>
+        <div style="position: relative; height: 260px; width: 100%;">
+          <canvas id="priceHistoryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Snapshot Log Feed -->
+      <div>
+        <h4 style="font-family: 'Syne', sans-serif; font-size: 1.1rem; color: #fff; margin-bottom: 0.8rem;">Snapshot Ingestion Ledger</h4>
+        <div class="activity-stream" style="max-height: 180px;" id="modal-snapshot-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07: ADD PRODUCT MODAL -->
+  <div class="modal-backdrop" id="add-product-modal">
+    <div class="glass-modal-window" style="max-width: 580px; padding: 2.6rem;">
+      <button class="modal-close-btn hover-trigger" id="close-add-modal-btn">✕</button>
+      <div>
+        <div class="tagline">Catalog Ingestion</div>
+        <h2 class="section-title" style="font-size: 1.9rem;">Track New SKU</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.4rem;">
+          Enter any product URL to launch the Bright Data AI collector cloud job, or enter a snapshot manually[cite: 1, 4].
+        </p>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="modal-tab-bar">
+        <button class="tab-btn active" id="tab-url-btn" onclick="switchAddTab('url')">⚡ URL Cloud Scrape</button>
+        <button class="tab-btn" id="tab-manual-btn" onclick="switchAddTab('manual')">+ Manual Ingestion</button>
+      </div>
+
+      <!-- URL Form -->
+      <form id="url-scrape-form" style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <div class="form-group">
+          <label>Target Product Page URL</label>
+          <input type="url" id="target-product-url" class="cyber-input" placeholder="https://buy.realme.com/in/goods/766 or Amazon/E-com..." required />
+        </div>
+        <button type="submit" class="liquid-btn liquid-btn-primary hover-trigger" id="url-submit-btn" style="height: 48px; font-size: 0.85rem;">
+          ⚡ Trigger Bright Data Collector
+        </button>
+      </form>
+
+      <!-- Manual Form -->
+      <form id="scrape-form" style="display: none; flex-direction: column; gap: 1.2rem;">
+        <div class="form-group">
+          <label>Product Title</label>
+          <input type="text" id="item-title" class="cyber-input" placeholder="e.g. realme 12 Pro+ 5G" required />
+        </div>
+        <div class="form-group">
+          <label>Price Value ($ or ₹)</label>
+          <input type="number" step="0.01" id="item-price" class="cyber-input" placeholder="299.99" required />
+        </div>
+        <div class="form-group">
+          <label>Availability Stock</label>
+          <select id="item-stock" class="cyber-select">
+            <option value="In Stock">In Stock</option>
+            <option value="Out of Stock">Out of Stock</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </div>
+        <button type="submit" class="liquid-btn liquid-btn-primary hover-trigger" id="submit-btn" style="height: 48px; font-size: 0.85rem;">
+          + Ingest Snapshot Into Supabase
+        </button>
+      </form>
+
+      <div id="form-alert" class="alert-banner"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lenis@1.1.9/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
