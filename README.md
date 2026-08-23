@@ -35,3 +35,24 @@ Every scraped record flows through a Python normalization step into Supabase, wh
 │   ├── script.js             # Three.js 3D viewport, GSAP animations, and API client
 │   └── style.css             # Glassmorphism/cyberpunk styling system
 └── README.md
+
+
+
+🚀 Quickstart GuidePrerequisitesPython 3.10+Supabase AccountBright Data Account (Collector ID & API Token)Backend SetupNavigate to the backend directory:Bashcd backend
+Create and activate a virtual environment:  Bash# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+Install dependencies:  Bashpip install -r requirements.txt
+Configure environment variables:Create a .env file in backend/:  Code snippetSUPABASE_URL=[https://your-project.supabase.co](https://your-project.supabase.co)
+SUPABASE_KEY=your-supabase-key
+BRIGHTDATA_API_KEY=your-brightdata-api-key
+BRIGHTDATA_COLLECTOR_ID=your-brightdata-collector-id
+PORT=5000
+Start the backend server:Bashpython app.py
+Health check endpoint: http://127.0.0.1:5000/Frontend SetupNavigate to the frontend directory:Bashcd frontend
+Start a local development server:Bashpython -m http.server 3000
+Access the console:Open http://localhost:3000 in your browser.🌐 Production DeploymentBackend on VercelSet the Root Directory to backend.Add your environment variables in Vercel (SUPABASE_URL, SUPABASE_KEY, BRIGHTDATA_API_KEY, BRIGHTDATA_COLLECTOR_ID).Deploy. The generated endpoint will serve all /api/* routes.Frontend on NetlifySet the Publish Directory to frontend.Update the API_BASE variable at the top of frontend/script.js to match your live Vercel backend URL.Deploy.📡 API ReferenceMethodEndpointDescriptionGET/Service health status and active scraping modePOST/api/scrape-urlRuns autonomous extraction on a target URL and persists delta statePOST/api/scrapeManually ingests a structured price/stock snapshotGET/api/itemsRetrieves full monitored product fleet telemetryPOST/api/items/deletePermanently deletes a SKU and its snapshot historyGET/api/download-csvGenerates and downloads the current dataset as a CSV
