@@ -16,7 +16,7 @@
   gsap.ticker.lagSmoothing(0);
   gsap.registerPlugin(ScrollTrigger);
 
-  // Set your active Vercel domain or local fallback
+  // Set the live backend URL
   const API_BASE = window.VITE_API_URL || "https://resilient-scraper-studio.vercel.app";
 
   // ---------------------------------------------------------
@@ -228,7 +228,7 @@
 
   async function checkApiHealth() {
     try {
-      const res = await fetch(`${API_BASE}/`);
+      const res = await fetch(`${API_BASE}/`, { method: 'GET' });
       if (res.ok) {
         if (apiDot) apiDot.className = 'status-dot online';
         if (apiStatusText) apiStatusText.textContent = 'Engine Active';
@@ -246,7 +246,7 @@
   async function loadItems() {
     await checkApiHealth();
     try {
-      const res = await fetch(`${API_BASE}/api/items`);
+      const res = await fetch(`${API_BASE}/api/items`, { method: 'GET' });
       if (!res.ok) throw new Error('API unreachable');
       const data = await res.json();
       
@@ -501,7 +501,7 @@
     if (formAlert) formAlert.style.display = 'none';
   }
 
-  // Permanent Delete connected to Backend API
+  // Permanent Delete
   async function removeProduct(title) {
     if (!confirm(`Permanently delete "${title}" and all its history from database?`)) return;
 
@@ -616,7 +616,7 @@
 
   if (refreshBtn) refreshBtn.addEventListener('click', () => loadItems());
 
-  // Dynamic CSV Download binding to live Vercel endpoint
+  // Dynamic CSV Download handler
   document.querySelectorAll('a[href*="download-csv"]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
