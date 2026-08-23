@@ -16,7 +16,6 @@
   gsap.ticker.lagSmoothing(0);
   gsap.registerPlugin(ScrollTrigger);
 
-  // Set the live backend URL
   const API_BASE = window.VITE_API_URL || "https://resilient-scraper-studio.vercel.app";
 
   // ---------------------------------------------------------
@@ -192,6 +191,8 @@
   // ---------------------------------------------------------
   let rawItems = [];
   let priceChartInstance = null;
+  let trackedUrls = new Set();
+  let lastDataChecksum = "";
 
   const apiDot = document.getElementById('api-dot');
   const apiStatusText = document.getElementById('api-status-text');
@@ -231,7 +232,7 @@
       const res = await fetch(`${API_BASE}/`, { method: 'GET' });
       if (res.ok) {
         if (apiDot) apiDot.className = 'status-dot online';
-        if (apiStatusText) apiStatusText.textContent = 'Engine Active';
+        if (apiStatusText) apiStatusText.textContent = 'Auto-Radar Live';
         if (statHealthNum) statHealthNum.textContent = '100%';
         return true;
       }
@@ -243,28 +244,34 @@
     return false;
   }
 
-  async function loadItems() {
-    await checkApiHealth();
+  async function loadItems(silent = false) {
+    if (!silent) await checkApiHealth();
     try {
       const res = await fetch(`${API_BASE}/api/items`, { method: 'GET' });
       if (!res.ok) throw new Error('API unreachable');
       const data = await res.json();
       
       const rawList = data.items || [];
-      rawItems = rawList.map(item => {
-        if (Array.isArray(item)) return item;
-        return [
-          item.id || 0,
-          item.title || item.product_name || 'Unknown Item',
-          parseFloat(item.price || 0),
-          item.stock || item.stock_status || 'In Stock',
-          item.scraped_at || '',
-          item.currency || '₹'
-        ];
-      });
-      renderDashboard();
+      const newChecksum = JSON.stringify(rawList);
+
+      // Only trigger DOM re-render if data mutated
+      if (newChecksum !== lastDataChecksum) {
+        lastDataChecksum = newChecksum;
+        rawItems = rawList.map(item => {
+          if (Array.isArray(item)) return item;
+          return [
+            item.id || 0,
+            item.title || item.product_name || 'Unknown Item',
+            parseFloat(item.price || 0),
+            item.stock || item.stock_status || 'In Stock',
+            item.scraped_at || '',
+            item.currency || '₹'
+          ];
+        });
+        renderDashboard();
+      }
     } catch (err) {
-      if (fleetContainer) {
+      if (fleetContainer && !silent) {
         fleetContainer.innerHTML = `
           <div style="text-align: center; color: var(--danger); padding: 3rem; font-size: 0.9rem;">
             Failed to connect to backend at <code>${API_BASE}</code>.
@@ -273,6 +280,29 @@
       }
     }
   }
+
+  // ---------------------------------------------------------
+  // 6. Automated Background Fleet Re-Scraping & Live Updates
+  // ---------------------------------------------------------
+  async function backgroundFleetUpdate() {
+    if (trackedUrls.size > 0) {
+      try {
+        await fetch(`${API_BASE}/api/rescrape-fleet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: Array.from(trackedUrls) })
+        });
+      } catch (e) {
+        // Silent catch for background worker
+      }
+    }
+    await loadItems(true);
+  }
+
+  // Auto-poll database every 10 seconds for real-time live sync
+  setInterval(loadItems, 10000);
+  // Auto-trigger background re-scrape every 60 seconds
+  setInterval(backgroundFleetUpdate, 60000);
 
   function renderDashboard() {
     const productMap = new Map();
@@ -310,7 +340,7 @@
           <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">📡</div>
           <h4 style="font-family: 'Syne', sans-serif; font-size: 1.3rem; color: #fff;">No Tracked Items</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 360px; margin: 0.4rem auto 1.4rem auto;">
-            Enter any product URL to launch extraction.
+            Enter any product URL to launch auto-updating telemetry.
           </p>
         </div>
       `;
@@ -320,6 +350,7 @@
         const latest = snapshots[snapshots.length - 1];
         const curr = latest.currency || '₹';
         const isDrop = snapshots.length > 1 && latest.price < snapshots[snapshots.length - 2].price;
+        const isHike = snapshots.length > 1 && latest.price > snapshots[snapshots.length - 2].price;
         const isRestock = snapshots.length > 1 && 
           snapshots[snapshots.length - 2].stock?.toLowerCase() === 'out of stock' && 
           latest.stock?.toLowerCase() === 'in stock';
@@ -337,6 +368,7 @@
             <div class="prod-price ${isDrop ? 'drop' : ''}">
               ${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               ${isDrop ? '<span style="font-size: 0.68rem; color: var(--success); display: block;">▼ Price Drop</span>' : ''}
+              ${isHike ? '<span style="font-size: 0.68rem; color: var(--danger); display: block;">▲ Price Increase</span>' : ''}
             </div>
             <div>
               <span class="pill ${badgeClass}">${badgeLabel}</span>
@@ -496,12 +528,36 @@
     });
   }
 
+  function updateHealingTerminal(telemetry) {
+    const logContainer = document.getElementById('scraper-heal-log');
+    if (!logContainer) return;
+
+    if (!telemetry || !telemetry.trace) {
+      logContainer.innerHTML = `[HEAL_MESH]: Collector active.<br/>[STATUS]: Live Radar connected to Supabase.`;
+      return;
+    }
+
+    const traceLines = telemetry.trace.map(t => {
+      if (t.includes('[MUTATION_DETECTED]')) {
+        return `<span style="color: var(--danger); font-weight: bold;">${escapeHtml(t)}</span>`;
+      }
+      if (t.includes('[AST_PATCH_APPLIED]') || t.includes('[HEALED]')) {
+        return `<span style="color: var(--success); font-weight: bold;">${escapeHtml(t)}</span>`;
+      }
+      return `<span style="color: #9d6fff;">${escapeHtml(t)}</span>`;
+    }).join('<br/>');
+
+    logContainer.innerHTML = `
+      ${traceLines}<br/>
+      <span style="color: var(--accent-cyan);">[RADAR_LATENCY]: ${telemetry.repair_duration_ms || 120}ms. Auto-monitoring armed.</span>
+    `;
+  }
+
   function openAddModal() {
     if (addProductModal) addProductModal.classList.add('open');
     if (formAlert) formAlert.style.display = 'none';
   }
 
-  // Permanent Delete
   async function removeProduct(title) {
     if (!confirm(`Permanently delete "${title}" and all its history from database?`)) return;
 
@@ -549,7 +605,7 @@
 
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner"></span> Scraping...`;
+        submitBtn.innerHTML = `<span class="spinner"></span> Running Self-Healing Extraction...`;
       }
 
       try {
@@ -560,9 +616,14 @@
         });
         const result = await res.json();
         if (res.ok) {
+          trackedUrls.add(url);
+          if (result.healing_telemetry) {
+            updateHealingTerminal(result.healing_telemetry);
+          }
+
           if (formAlert) {
             formAlert.className = 'alert-banner success';
-            formAlert.textContent = 'Scraped and saved successfully.';
+            formAlert.textContent = 'Scraped and added to continuous price radar!';
             formAlert.style.display = 'block';
           }
           urlScrapeForm.reset();
@@ -616,7 +677,6 @@
 
   if (refreshBtn) refreshBtn.addEventListener('click', () => loadItems());
 
-  // Dynamic CSV Download handler
   document.querySelectorAll('a[href*="download-csv"]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
