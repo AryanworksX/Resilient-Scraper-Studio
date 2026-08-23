@@ -24,23 +24,14 @@ Every scraped record flows through a Python normalization step into Supabase, wh
 ## 📂 Repository Structure
 
 ```text
-Resilient-Scraper-Studio/
+```text
 ├── backend/
-│   ├── api/
-│   │   └── index.py            # Vercel serverless entry point
-│   ├── app.py                  # Flask REST API endpoints[cite: 1]
-│   ├── db.py                   # Supabase client & delta tagging logic[cite: 1]
-│   ├── schema.sql              # Supabase PostgreSQL database schema[cite: 1]
-│   ├── requirements.txt        # Python backend dependencies[cite: 1]
-│   ├── vercel.json             # Deployment routing configuration[cite: 1]
-│   └── .env.example            # Backend environment variables template[cite: 1]
-├── scraper/
-│   ├── run_collector.py        # Standalone scraper runner & cloud poller[cite: 1]
-│   ├── requirements.txt        # Scraper runner dependencies[cite: 1]
-│   └── .env.example            # Scraper environment variables template[cite: 1]
+│   ├── app.py                # Unified Flask REST API, DCA pipeline, and resolvers
+│   ├── requirements.txt      # Production dependencies
+│   ├── vercel.json           # Serverless build and routing configuration
+│   └── .env.example          # Environment variables template
 ├── frontend/
-│   ├── index.html              # Telemetry dashboard & self-healing lab[cite: 1]
-│   ├── style.css               # Cyber-glassmorphism & neumorphic styles[cite: 1]
-│   └── script.js               # Frontend data engine, WebGL, & Chart.js[cite: 1]
-├── .gitignore                  # Global secrets and environment ignores[cite: 1]
+│   ├── index.html            # Command Console, modals, and WebGL canvas
+│   ├── script.js             # Three.js 3D viewport, GSAP animations, and API client
+│   └── style.css             # Glassmorphism/cyberpunk styling system
 └── README.md
