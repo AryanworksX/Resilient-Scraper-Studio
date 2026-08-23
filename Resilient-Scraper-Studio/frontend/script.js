@@ -1,6 +1,8 @@
 // Wrap in an IIFE to ensure zero global scope collisions or redeclaration errors
 (() => {
+  // ---------------------------------------------------------
   // 1. Lenis Smooth Momentum Scrolling
+  // ---------------------------------------------------------
   const lenis = new Lenis({
     duration: 1.25,
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -19,7 +21,9 @@
 
   const API_BASE = window.VITE_API_URL || "http://127.0.0.1:5000";
 
+  // ---------------------------------------------------------
   // 2. Kinetic Cursor (Skiper-UI Inspired)
+  // ---------------------------------------------------------
   const cursorDot = document.querySelector('.cursor-dot');
   const cursorOutline = document.querySelector('.cursor-outline');
   let cursorX = 0, cursorY = 0;
@@ -47,7 +51,9 @@
   }
   attachHoverTriggers();
 
-  // 3. Three.js Realtime Mesh
+  // ---------------------------------------------------------
+  // 3. Three.js Realtime Dynamic 3D Mesh Animation
+  // ---------------------------------------------------------
   const canvas = document.getElementById('webgl-canvas');
   if (canvas) {
     const scene = new THREE.Scene();
@@ -163,7 +169,9 @@
     });
   }
 
-  // Step scroll triggering
+  // ---------------------------------------------------------
+  // 4. Step Scroll Triggering
+  // ---------------------------------------------------------
   const stepCards = document.querySelectorAll('.step-card');
   const stepNumber = document.getElementById('step-number');
   stepCards.forEach((card, index) => {
@@ -181,7 +189,9 @@
     if (stepNumber) stepNumber.textContent = (index + 1).toString().padStart(2, '0');
   }
 
-  // 4. Data Engine State & DOM References
+  // ---------------------------------------------------------
+  // 5. Data Engine State & DOM References
+  // ---------------------------------------------------------
   let rawItems = [];
   let removedProductTitles = new Set();
   let priceChartInstance = null;
@@ -219,6 +229,11 @@
   const scrapeForm = document.getElementById('scrape-form');
   const formAlert = document.getElementById('form-alert');
 
+  function getCurrencySymbol(item) {
+    if (item && item.currency) return item.currency;
+    return '₹';
+  }
+
   async function checkApiHealth() {
     try {
       const res = await fetch(`${API_BASE}/`);
@@ -240,7 +255,7 @@
     await checkApiHealth();
     try {
       const res = await fetch(`${API_BASE}/api/items`);
-      if (!res.ok) throw new Error('Failed to connect to Supabase backend');
+      if (!res.ok) throw new Error('Failed to connect to backend API');
       const data = await res.json();
       
       const rawList = data.items || data.data || [];
@@ -248,10 +263,11 @@
         if (Array.isArray(item)) return item;
         return [
           item.id || 0,
-          item.title || 'Unknown Item',
+          item.title || item.product_name || 'Unknown Item',
           parseFloat(item.price || 0),
-          item.stock || 'In Stock',
-          item.scraped_at || ''
+          item.stock || item.stock_status || 'In Stock',
+          item.scraped_at || '',
+          item.currency || (item.title && item.title.toLowerCase().includes('$') ? '$' : '₹')
         ];
       });
       
@@ -275,11 +291,11 @@
     let restockCount = 0;
 
     validItems.forEach((row) => {
-      const [id, title, price, stock, scrapedAt] = row;
+      const [id, title, price, stock, scrapedAt, currency] = row;
       if (!productMap.has(title)) {
         productMap.set(title, []);
       }
-      productMap.get(title).push({ id, title, price: Number(price), stock, scrapedAt });
+      productMap.get(title).push({ id, title, price: Number(price), stock, scrapedAt, currency: currency || '₹' });
     });
 
     productMap.forEach((snapshots) => {
@@ -313,7 +329,7 @@
           <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">📡</div>
           <h4 style="font-family: 'Syne', sans-serif; font-size: 1.3rem; color: #fff;">Start Tracking Your First Product</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 360px; margin: 0.4rem auto 1.4rem auto;">
-            Enter any product link to launch the Bright Data AI collector and establish price telemetry history[cite: 4].
+            Enter any product link to launch the Bright Data AI collector and establish price telemetry history.
           </p>
           <button class="liquid-btn liquid-btn-primary hover-trigger" style="margin: 0 auto;" id="empty-add-btn">
             + Track Product
@@ -326,10 +342,11 @@
       let fleetHTML = '';
       productMap.forEach((snapshots, title) => {
         const latest = snapshots[snapshots.length - 1];
+        const curr = latest.currency || getCurrencySymbol(latest);
         const isDrop = snapshots.length > 1 && latest.price < snapshots[snapshots.length - 2].price;
         const isRestock = snapshots.length > 1 && 
           snapshots[snapshots.length - 2].stock && 
-          snapshots[snapshots.length - 2].stock.toLowerCase() === 'out of stock' &&
+          snapshots[snapshots.length - 2].stock.toLowerCase() === 'out of stock' && 
           latest.stock && latest.stock.toLowerCase() === 'in stock';
 
         const isInStock = latest.stock && latest.stock.toLowerCase() === 'in stock';
@@ -346,7 +363,7 @@
               <span class="prod-domain">⚡ ${escapeHtml(domain)}</span>
             </div>
             <div class="prod-price ${isDrop ? 'drop' : ''}">
-              $${latest.price.toFixed(2)}
+              ${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               ${isDrop ? '<span style="font-size: 0.68rem; color: var(--success); display: block; font-family: Plus Jakarta Sans;">▼ Price Drop</span>' : ''}
             </div>
             <div>
@@ -368,7 +385,6 @@
       });
       fleetContainer.innerHTML = fleetHTML;
 
-      // Event delegation for rows & action buttons
       document.querySelectorAll('.product-row-capsule').forEach(card => {
         card.addEventListener('click', () => openProductAnalysis(card.getAttribute('data-title')));
       });
@@ -398,7 +414,8 @@
     }
     const reversed = [...items].slice(-8).reverse();
     activityStreamList.innerHTML = reversed.map((row) => {
-      const [id, title, price, stock, scrapedAt] = row;
+      const [id, title, price, stock, scrapedAt, currency] = row;
+      const curr = currency || '₹';
       const isStock = stock && stock.toLowerCase() === 'in stock';
       const timeAgo = formatTimeAgo(scrapedAt);
 
@@ -407,7 +424,7 @@
           <div class="activity-icon">⚡</div>
           <div style="flex: 1;">
             <div class="activity-desc">
-              <strong style="color: #fff;">${escapeHtml(title)}</strong> recorded at <span style="color: var(--accent); font-weight: 700;">$${parseFloat(price).toFixed(2)}</span>
+              <strong style="color: #fff;">${escapeHtml(title)}</strong> recorded at <span style="color: var(--accent); font-weight: 700;">${curr}${parseFloat(price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               (<span style="color: ${isStock ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(stock)}</span>)
             </div>
             <div class="activity-time">${timeAgo} • Snapshot #${id}</div>
@@ -417,16 +434,19 @@
     }).join('');
   }
 
-  // 5. Deep Product Analytics Modal with Glowing Gradient Chart
+  // ---------------------------------------------------------
+  // 6. Deep Analytics Modal with Glowing Gradient Chart
+  // ---------------------------------------------------------
   function openProductAnalysis(title) {
     const snapshots = rawItems
       .filter(item => item && item[1] === title)
-      .map(i => ({ id: i[0], price: Number(i[2]), stock: i[3], scrapedAt: i[4] }))
+      .map(i => ({ id: i[0], price: Number(i[2]), stock: i[3], scrapedAt: i[4], currency: i[5] || '₹' }))
       .sort((a, b) => (a.id || 0) - (b.id || 0));
 
     if (snapshots.length === 0) return;
 
     const latest = snapshots[snapshots.length - 1];
+    const curr = latest.currency || '₹';
     const prices = snapshots.map(s => s.price);
     const lowest = Math.min(...prices);
     const highest = Math.max(...prices);
@@ -445,10 +465,10 @@
       modalLastScraped.textContent = `Last Ping: ${latest.scrapedAt ? latest.scrapedAt.substring(11, 19) : 'Active'}`;
     }
 
-    if (modalCurrentPrice) modalCurrentPrice.textContent = `$${latest.price.toFixed(2)}`;
-    if (modalLowPrice) modalLowPrice.textContent = `$${lowest.toFixed(2)}`;
-    if (modalHighPrice) modalHighPrice.textContent = `$${highest.toFixed(2)}`;
-    if (modalAvgPrice) modalAvgPrice.textContent = `$${avg.toFixed(2)}`;
+    if (modalCurrentPrice) modalCurrentPrice.textContent = `${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (modalLowPrice) modalLowPrice.textContent = `${curr}${lowest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (modalHighPrice) modalHighPrice.textContent = `${curr}${highest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (modalAvgPrice) modalAvgPrice.textContent = `${curr}${avg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (modalTotalSnaps) modalTotalSnaps.textContent = snapshots.length;
 
     if (modalSnapshotLog) {
@@ -456,19 +476,18 @@
         <div class="activity-item-capsule" style="padding: 0.75rem 1rem;">
           <div style="font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--accent-cyan);">#${s.id}</div>
           <div style="flex: 1; font-size: 0.8rem;">
-            Price: <strong style="color: #fff;">$${s.price.toFixed(2)}</strong> | Status: <strong style="color: ${s.stock && s.stock.toLowerCase() === 'in stock' ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(s.stock)}</strong>
+            Price: <strong style="color: #fff;">${curr}${s.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> | Status: <strong style="color: ${s.stock && s.stock.toLowerCase() === 'in stock' ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(s.stock)}</strong>
             <div style="color: var(--text-muted); font-size: 0.7rem; font-family: 'JetBrains Mono';">${escapeHtml(s.scrapedAt)}</div>
           </div>
         </div>
       `).join('');
     }
 
-    renderChart(snapshots);
+    renderChart(snapshots, curr);
     if (analysisModal) analysisModal.classList.add('open');
   }
 
-  // Dark-Mode Glowing Spline Chart
-  function renderChart(snapshots) {
+  function renderChart(snapshots, currencySymbol = '₹') {
     const ctx = document.getElementById('priceHistoryChart');
     if (!ctx) return;
 
@@ -484,7 +503,6 @@
     });
 
     const dataValues = snapshots.map(s => s.price);
-
     const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240);
     gradient.addColorStop(0, 'rgba(157, 111, 255, 0.45)');
     gradient.addColorStop(1, 'rgba(157, 111, 255, 0.0)');
@@ -494,7 +512,7 @@
       data: {
         labels: labels,
         datasets: [{
-          label: 'Price ($)',
+          label: `Price (${currencySymbol})`,
           data: dataValues,
           borderColor: '#9d6fff',
           backgroundColor: gradient,
@@ -523,7 +541,7 @@
             cornerRadius: 10,
             displayColors: false,
             callbacks: {
-              label: (context) => ` Price: $${Number(context.raw).toFixed(2)}`
+              label: (context) => ` Price: ${currencySymbol}${Number(context.raw).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             }
           }
         },
@@ -537,7 +555,7 @@
             ticks: {
               color: '#828198',
               font: { family: 'JetBrains Mono', size: 11 },
-              callback: (val) => `$${val}`
+              callback: (val) => `${currencySymbol}${val}`
             }
           }
         }
@@ -590,7 +608,7 @@
     if (e.target === addProductModal && addProductModal) addProductModal.classList.remove('open');
   });
 
-  // URL Trigger Ingestion with Visual Loading State
+  // URL Trigger Ingestion
   if (urlScrapeForm) {
     urlScrapeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -600,7 +618,7 @@
 
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner"></span> Polling Bright Data Cloud... (15-35s)`;
+        submitBtn.innerHTML = `<span class="spinner"></span> Polling & Healing Mesh... (10-30s)`;
       }
       if (formAlert) {
         formAlert.className = 'alert-banner';
@@ -617,7 +635,7 @@
         if (res.ok) {
           if (formAlert) {
             formAlert.className = 'alert-banner success';
-            formAlert.textContent = `Scrape complete! Data normalized and stored in Supabase.`;
+            formAlert.textContent = `Scrape complete! Data normalized and persisted.`;
             formAlert.style.display = 'block';
           }
           urlScrapeForm.reset();
@@ -654,11 +672,12 @@
       const title = titleInput ? titleInput.value.trim() : '';
       const price = priceInput ? parseFloat(priceInput.value) : 0;
       const stock = stockInput ? stockInput.value : 'In Stock';
+      const currency = '₹';
 
       removedProductTitles.delete(title);
       const now = new Date();
       const scraped_at = now.toISOString().replace('T', ' ').substring(0, 19);
-      const payload = { title, price, stock, scraped_at };
+      const payload = { title, price, stock, currency, scraped_at };
 
       try {
         const res = await fetch(`${API_BASE}/api/scrape`, {
@@ -670,7 +689,7 @@
         if (res.ok) {
           if (formAlert) {
             formAlert.className = 'alert-banner success';
-            formAlert.textContent = `Snapshot stored as "${result.status}"!`;
+            formAlert.textContent = `Snapshot stored as "${result.status || 'saved'}"!`;
             formAlert.style.display = 'block';
           }
           scrapeForm.reset();
@@ -696,8 +715,11 @@
   // Helper Functions
   function extractDomain(title) {
     if (!title) return 'store.marketplace.com';
-    if (title.toLowerCase().includes('realme')) return 'buy.realme.com';
-    if (title.toLowerCase().includes('amazon')) return 'amazon.com';
+    const t = title.toLowerCase();
+    if (t.includes('campus')) return 'campusshoes.com';
+    if (t.includes('realme')) return 'buy.realme.com';
+    if (t.includes('nike')) return 'nike.in';
+    if (t.includes('amazon')) return 'amazon.in';
     return 'ecom.store.com';
   }
 
