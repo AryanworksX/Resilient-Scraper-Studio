@@ -1,4 +1,3 @@
-// Wrap in an IIFE to ensure zero global scope collisions or redeclaration errors
 (() => {
   // ---------------------------------------------------------
   // 1. Lenis Smooth Momentum Scrolling
@@ -13,16 +12,15 @@
   });
 
   lenis.on('scroll', ScrollTrigger.update);
-  gsap.ticker.add((time) => {
-    lenis.raf(time * 1000);
-  });
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
   gsap.ticker.lagSmoothing(0);
   gsap.registerPlugin(ScrollTrigger);
 
-  const API_BASE = window.VITE_API_URL || "http://127.0.0.1:5000";
+  // Set your active Vercel domain or local fallback
+  const API_BASE = window.VITE_API_URL || "https://resilient-scraper-studio.vercel.app";
 
   // ---------------------------------------------------------
-  // 2. Kinetic Cursor (Skiper-UI Inspired)
+  // 2. Kinetic Cursor
   // ---------------------------------------------------------
   const cursorDot = document.querySelector('.cursor-dot');
   const cursorOutline = document.querySelector('.cursor-outline');
@@ -193,7 +191,6 @@
   // 5. Data Engine State & DOM References
   // ---------------------------------------------------------
   let rawItems = [];
-  let removedProductTitles = new Set();
   let priceChartInstance = null;
 
   const apiDot = document.getElementById('api-dot');
@@ -229,17 +226,12 @@
   const scrapeForm = document.getElementById('scrape-form');
   const formAlert = document.getElementById('form-alert');
 
-  function getCurrencySymbol(item) {
-    if (item && item.currency) return item.currency;
-    return '₹';
-  }
-
   async function checkApiHealth() {
     try {
       const res = await fetch(`${API_BASE}/`);
       if (res.ok) {
         if (apiDot) apiDot.className = 'status-dot online';
-        if (apiStatusText) apiStatusText.textContent = '3/3 Collectors Healthy';
+        if (apiStatusText) apiStatusText.textContent = 'Engine Active';
         if (statHealthNum) statHealthNum.textContent = '100%';
         return true;
       }
@@ -255,10 +247,10 @@
     await checkApiHealth();
     try {
       const res = await fetch(`${API_BASE}/api/items`);
-      if (!res.ok) throw new Error('Failed to connect to backend API');
+      if (!res.ok) throw new Error('API unreachable');
       const data = await res.json();
       
-      const rawList = data.items || data.data || [];
+      const rawList = data.items || [];
       rawItems = rawList.map(item => {
         if (Array.isArray(item)) return item;
         return [
@@ -267,17 +259,15 @@
           parseFloat(item.price || 0),
           item.stock || item.stock_status || 'In Stock',
           item.scraped_at || '',
-          item.currency || (item.title && item.title.toLowerCase().includes('$') ? '$' : '₹')
+          item.currency || '₹'
         ];
       });
-      
       renderDashboard();
     } catch (err) {
       if (fleetContainer) {
         fleetContainer.innerHTML = `
           <div style="text-align: center; color: var(--danger); padding: 3rem; font-size: 0.9rem;">
-            Failed to fetch product telemetry from Flask API at <code>${API_BASE}</code>.<br/>
-            <small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">Ensure backend server is active.</small>
+            Failed to connect to backend at <code>${API_BASE}</code>.
           </div>
         `;
       }
@@ -285,33 +275,24 @@
   }
 
   function renderDashboard() {
-    const validItems = rawItems.filter(item => item && !removedProductTitles.has(item[1]));
     const productMap = new Map();
     let priceDropCount = 0;
     let restockCount = 0;
 
-    validItems.forEach((row) => {
+    rawItems.forEach((row) => {
       const [id, title, price, stock, scrapedAt, currency] = row;
-      if (!productMap.has(title)) {
-        productMap.set(title, []);
-      }
+      if (!productMap.has(title)) productMap.set(title, []);
       productMap.get(title).push({ id, title, price: Number(price), stock, scrapedAt, currency: currency || '₹' });
     });
 
     productMap.forEach((snapshots) => {
       snapshots.sort((a, b) => (a.id || 0) - (b.id || 0));
       for (let i = 1; i < snapshots.length; i++) {
-        if (snapshots[i].price < snapshots[i - 1].price) {
-          priceDropCount++;
-        }
+        if (snapshots[i].price < snapshots[i - 1].price) priceDropCount++;
         if (
-          snapshots[i - 1].stock &&
-          snapshots[i - 1].stock.toLowerCase() === 'out of stock' &&
-          snapshots[i].stock &&
-          snapshots[i].stock.toLowerCase() === 'in stock'
-        ) {
-          restockCount++;
-        }
+          snapshots[i - 1].stock?.toLowerCase() === 'out of stock' &&
+          snapshots[i].stock?.toLowerCase() === 'in stock'
+        ) restockCount++;
       }
     });
 
@@ -327,44 +308,35 @@
       fleetContainer.innerHTML = `
         <div class="empty-state-box">
           <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">📡</div>
-          <h4 style="font-family: 'Syne', sans-serif; font-size: 1.3rem; color: #fff;">Start Tracking Your First Product</h4>
+          <h4 style="font-family: 'Syne', sans-serif; font-size: 1.3rem; color: #fff;">No Tracked Items</h4>
           <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 360px; margin: 0.4rem auto 1.4rem auto;">
-            Enter any product link to launch the Bright Data AI collector and establish price telemetry history.
+            Enter any product URL to launch extraction.
           </p>
-          <button class="liquid-btn liquid-btn-primary hover-trigger" style="margin: 0 auto;" id="empty-add-btn">
-            + Track Product
-          </button>
         </div>
       `;
-      const emptyBtn = document.getElementById('empty-add-btn');
-      if (emptyBtn) emptyBtn.addEventListener('click', openAddModal);
     } else {
       let fleetHTML = '';
       productMap.forEach((snapshots, title) => {
         const latest = snapshots[snapshots.length - 1];
-        const curr = latest.currency || getCurrencySymbol(latest);
+        const curr = latest.currency || '₹';
         const isDrop = snapshots.length > 1 && latest.price < snapshots[snapshots.length - 2].price;
         const isRestock = snapshots.length > 1 && 
-          snapshots[snapshots.length - 2].stock && 
-          snapshots[snapshots.length - 2].stock.toLowerCase() === 'out of stock' && 
-          latest.stock && latest.stock.toLowerCase() === 'in stock';
+          snapshots[snapshots.length - 2].stock?.toLowerCase() === 'out of stock' && 
+          latest.stock?.toLowerCase() === 'in stock';
 
-        const isInStock = latest.stock && latest.stock.toLowerCase() === 'in stock';
-        const isOutStock = latest.stock && latest.stock.toLowerCase() === 'out of stock';
-        
-        const badgeClass = isRestock ? 'restocked' : (isInStock ? 'in-stock' : (isOutStock ? 'out-of-stock' : 'unknown'));
-        const badgeLabel = isRestock ? '● Restocked' : (isInStock ? '● In Stock' : (isOutStock ? '● Out of Stock' : '● ' + escapeHtml(latest.stock || 'Unknown')));
-        const domain = extractDomain(title);
+        const isInStock = latest.stock?.toLowerCase() === 'in stock';
+        const badgeClass = isRestock ? 'restocked' : (isInStock ? 'in-stock' : 'out-of-stock');
+        const badgeLabel = isRestock ? '● Restocked' : (isInStock ? '● In Stock' : '● Out of Stock');
 
         fleetHTML += `
           <div class="product-row-capsule hover-trigger" data-title="${escapeHtml(title)}">
             <div>
               <span class="prod-name">${escapeHtml(title)}</span>
-              <span class="prod-domain">⚡ ${escapeHtml(domain)}</span>
+              <span class="prod-domain">⚡ ${escapeHtml(extractDomain(title))}</span>
             </div>
             <div class="prod-price ${isDrop ? 'drop' : ''}">
-              ${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              ${isDrop ? '<span style="font-size: 0.68rem; color: var(--success); display: block; font-family: Plus Jakarta Sans;">▼ Price Drop</span>' : ''}
+              ${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ${isDrop ? '<span style="font-size: 0.68rem; color: var(--success); display: block;">▼ Price Drop</span>' : ''}
             </div>
             <div>
               <span class="pill ${badgeClass}">${badgeLabel}</span>
@@ -373,12 +345,8 @@
               ${escapeHtml((latest.scrapedAt || '').substring(11, 19) || 'Just now')}
             </div>
             <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation();">
-              <button class="btn-mini-inspect hover-trigger inspect-btn" data-title="${escapeHtml(title)}">
-                Inspect
-              </button>
-              <button class="btn-mini-delete hover-trigger remove-btn" title="Remove SKU" data-title="${escapeHtml(title)}">
-                ✕
-              </button>
+              <button class="btn-mini-inspect hover-trigger inspect-btn" data-title="${escapeHtml(title)}">Inspect</button>
+              <button class="btn-mini-delete hover-trigger remove-btn" data-title="${escapeHtml(title)}">✕</button>
             </div>
           </div>
         `;
@@ -402,41 +370,36 @@
       });
     }
 
-    renderActivityFeed(validItems);
+    renderActivityFeed(rawItems);
     attachHoverTriggers();
   }
 
   function renderActivityFeed(items) {
     if (!activityStreamList) return;
     if (items.length === 0) {
-      activityStreamList.innerHTML = `<div style="color: var(--text-muted); font-size: 0.82rem; padding: 0.5rem 0;">No telemetry activities logged yet.</div>`;
+      activityStreamList.innerHTML = `<div style="color: var(--text-muted); font-size: 0.82rem;">No telemetry recorded yet.</div>`;
       return;
     }
     const reversed = [...items].slice(-8).reverse();
     activityStreamList.innerHTML = reversed.map((row) => {
       const [id, title, price, stock, scrapedAt, currency] = row;
       const curr = currency || '₹';
-      const isStock = stock && stock.toLowerCase() === 'in stock';
-      const timeAgo = formatTimeAgo(scrapedAt);
-
+      const isStock = stock?.toLowerCase() === 'in stock';
       return `
         <div class="activity-item-capsule">
           <div class="activity-icon">⚡</div>
           <div style="flex: 1;">
             <div class="activity-desc">
-              <strong style="color: #fff;">${escapeHtml(title)}</strong> recorded at <span style="color: var(--accent); font-weight: 700;">${curr}${parseFloat(price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <strong style="color: #fff;">${escapeHtml(title)}</strong>: <span style="color: var(--accent); font-weight: 700;">${curr}${parseFloat(price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               (<span style="color: ${isStock ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(stock)}</span>)
             </div>
-            <div class="activity-time">${timeAgo} • Snapshot #${id}</div>
+            <div class="activity-time">${formatTimeAgo(scrapedAt)} • #${id}</div>
           </div>
         </div>
       `;
     }).join('');
   }
 
-  // ---------------------------------------------------------
-  // 6. Deep Analytics Modal with Glowing Gradient Chart
-  // ---------------------------------------------------------
   function openProductAnalysis(title) {
     const snapshots = rawItems
       .filter(item => item && item[1] === title)
@@ -451,24 +414,19 @@
     const lowest = Math.min(...prices);
     const highest = Math.max(...prices);
     const avg = prices.reduce((acc, p) => acc + p, 0) / prices.length;
-    const isInStock = latest.stock && latest.stock.toLowerCase() === 'in stock';
+    const isInStock = latest.stock?.toLowerCase() === 'in stock';
 
     if (modalProductTitle) modalProductTitle.textContent = title;
-    if (modalProductWebsite) modalProductWebsite.textContent = `⚡ Target SKU: ${extractDomain(title)}`;
-    
+    if (modalProductWebsite) modalProductWebsite.textContent = `⚡ SKU: ${extractDomain(title)}`;
     if (modalProductStock) {
       modalProductStock.className = `pill ${isInStock ? 'in-stock' : 'out-of-stock'}`;
       modalProductStock.textContent = isInStock ? '● In Stock' : '● Out of Stock';
     }
-    
-    if (modalLastScraped) {
-      modalLastScraped.textContent = `Last Ping: ${latest.scrapedAt ? latest.scrapedAt.substring(11, 19) : 'Active'}`;
-    }
-
-    if (modalCurrentPrice) modalCurrentPrice.textContent = `${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (modalLowPrice) modalLowPrice.textContent = `${curr}${lowest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (modalHighPrice) modalHighPrice.textContent = `${curr}${highest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (modalAvgPrice) modalAvgPrice.textContent = `${curr}${avg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (modalLastScraped) modalLastScraped.textContent = `Last Ping: ${latest.scrapedAt ? latest.scrapedAt.substring(11, 19) : 'Active'}`;
+    if (modalCurrentPrice) modalCurrentPrice.textContent = `${curr}${latest.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    if (modalLowPrice) modalLowPrice.textContent = `${curr}${lowest.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    if (modalHighPrice) modalHighPrice.textContent = `${curr}${highest.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    if (modalAvgPrice) modalAvgPrice.textContent = `${curr}${avg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
     if (modalTotalSnaps) modalTotalSnaps.textContent = snapshots.length;
 
     if (modalSnapshotLog) {
@@ -476,8 +434,8 @@
         <div class="activity-item-capsule" style="padding: 0.75rem 1rem;">
           <div style="font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--accent-cyan);">#${s.id}</div>
           <div style="flex: 1; font-size: 0.8rem;">
-            Price: <strong style="color: #fff;">${curr}${s.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> | Status: <strong style="color: ${s.stock && s.stock.toLowerCase() === 'in stock' ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(s.stock)}</strong>
-            <div style="color: var(--text-muted); font-size: 0.7rem; font-family: 'JetBrains Mono';">${escapeHtml(s.scrapedAt)}</div>
+            Price: <strong style="color: #fff;">${curr}${s.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+            <div style="color: var(--text-muted); font-size: 0.7rem;">${escapeHtml(s.scrapedAt)}</div>
           </div>
         </div>
       `).join('');
@@ -490,18 +448,9 @@
   function renderChart(snapshots, currencySymbol = '₹') {
     const ctx = document.getElementById('priceHistoryChart');
     if (!ctx) return;
+    if (priceChartInstance) priceChartInstance.destroy();
 
-    if (priceChartInstance) {
-      priceChartInstance.destroy();
-    }
-
-    const labels = snapshots.map((s, idx) => {
-      if (s.scrapedAt && s.scrapedAt.length >= 16) {
-        return s.scrapedAt.substring(11, 16);
-      }
-      return `Ping #${idx + 1}`;
-    });
-
+    const labels = snapshots.map((s, idx) => (s.scrapedAt && s.scrapedAt.length >= 16) ? s.scrapedAt.substring(11, 16) : `Ping #${idx + 1}`);
     const dataValues = snapshots.map(s => s.price);
     const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240);
     gradient.addColorStop(0, 'rgba(157, 111, 255, 0.45)');
@@ -522,8 +471,7 @@
           pointBackgroundColor: '#38bdf8',
           pointBorderColor: '#06050b',
           pointBorderWidth: 2,
-          pointRadius: 4.5,
-          pointHoverRadius: 7
+          pointRadius: 4.5
         }]
       },
       options: {
@@ -532,31 +480,16 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#120f22',
-            titleColor: '#828198',
-            bodyColor: '#ffffff',
-            borderColor: 'rgba(157, 111, 255, 0.3)',
-            borderWidth: 1,
-            padding: 10,
-            cornerRadius: 10,
-            displayColors: false,
             callbacks: {
-              label: (context) => ` Price: ${currencySymbol}${Number(context.raw).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              label: (context) => ` Price: ${currencySymbol}${Number(context.raw).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
             }
           }
         },
         scales: {
-          x: {
-            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: { color: '#828198', font: { family: 'JetBrains Mono', size: 11 } }
-          },
+          x: { grid: { color: 'rgba(255, 255, 255, 0.04)' } },
           y: {
             grid: { color: 'rgba(255, 255, 255, 0.04)' },
-            ticks: {
-              color: '#828198',
-              font: { family: 'JetBrains Mono', size: 11 },
-              callback: (val) => `${currencySymbol}${val}`
-            }
+            ticks: { callback: (val) => `${currencySymbol}${val}` }
           }
         }
       }
@@ -568,28 +501,34 @@
     if (formAlert) formAlert.style.display = 'none';
   }
 
-  function removeProduct(title) {
-    if (confirm(`Remove "${title}" from active telemetry radar?`)) {
-      removedProductTitles.add(title);
-      renderDashboard();
+  // Permanent Delete connected to Backend API
+  async function removeProduct(title) {
+    if (!confirm(`Permanently delete "${title}" and all its history from database?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/items/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+
+      if (res.ok) {
+        rawItems = rawItems.filter(item => item[1] !== title);
+        renderDashboard();
+      } else {
+        const err = await res.json();
+        alert(`Delete failed: ${err.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      alert(`Could not reach backend: ${err.message}`);
     }
   }
 
-  // Window callbacks for HTML
   window.switchAddTab = function(tab) {
-    const tabUrlBtn = document.getElementById('tab-url-btn');
-    const tabManualBtn = document.getElementById('tab-manual-btn');
-    if (tab === 'url') {
-      if (tabUrlBtn) tabUrlBtn.classList.add('active');
-      if (tabManualBtn) tabManualBtn.classList.remove('active');
-      if (urlScrapeForm) urlScrapeForm.style.display = 'flex';
-      if (scrapeForm) scrapeForm.style.display = 'none';
-    } else {
-      if (tabManualBtn) tabManualBtn.classList.add('active');
-      if (tabUrlBtn) tabUrlBtn.classList.remove('active');
-      if (scrapeForm) scrapeForm.style.display = 'flex';
-      if (urlScrapeForm) urlScrapeForm.style.display = 'none';
-    }
+    document.getElementById('tab-url-btn')?.classList.toggle('active', tab === 'url');
+    document.getElementById('tab-manual-btn')?.classList.toggle('active', tab === 'manual');
+    if (urlScrapeForm) urlScrapeForm.style.display = tab === 'url' ? 'flex' : 'none';
+    if (scrapeForm) scrapeForm.style.display = tab === 'manual' ? 'flex' : 'none';
     if (formAlert) formAlert.style.display = 'none';
   };
 
@@ -597,32 +536,20 @@
   window.openAddModal = openAddModal;
   window.removeProduct = removeProduct;
 
-  // Modal Listeners
-  if (closeModalBtn) closeModalBtn.addEventListener('click', () => analysisModal && analysisModal.classList.remove('open'));
-  if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', () => addProductModal && addProductModal.classList.remove('open'));
+  if (closeModalBtn) closeModalBtn.addEventListener('click', () => analysisModal?.classList.remove('open'));
+  if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', () => addProductModal?.classList.remove('open'));
   if (openAddModalBtn) openAddModalBtn.addEventListener('click', openAddModal);
   if (headerAddBtn) headerAddBtn.addEventListener('click', openAddModal);
 
-  window.addEventListener('click', (e) => {
-    if (e.target === analysisModal && analysisModal) analysisModal.classList.remove('open');
-    if (e.target === addProductModal && addProductModal) addProductModal.classList.remove('open');
-  });
-
-  // URL Trigger Ingestion
   if (urlScrapeForm) {
     urlScrapeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const urlInput = document.getElementById('target-product-url');
-      const url = urlInput ? urlInput.value.trim() : '';
+      const url = document.getElementById('target-product-url')?.value.trim();
       const submitBtn = document.getElementById('url-submit-btn');
 
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner"></span> Polling & Healing Mesh... (10-30s)`;
-      }
-      if (formAlert) {
-        formAlert.className = 'alert-banner';
-        formAlert.style.display = 'none';
+        submitBtn.innerHTML = `<span class="spinner"></span> Scraping...`;
       }
 
       try {
@@ -635,21 +562,19 @@
         if (res.ok) {
           if (formAlert) {
             formAlert.className = 'alert-banner success';
-            formAlert.textContent = `Scrape complete! Data normalized and persisted.`;
+            formAlert.textContent = 'Scraped and saved successfully.';
             formAlert.style.display = 'block';
           }
           urlScrapeForm.reset();
           await loadItems();
-          setTimeout(() => {
-            if (addProductModal) addProductModal.classList.remove('open');
-          }, 1500);
+          setTimeout(() => addProductModal?.classList.remove('open'), 1200);
         } else {
-          throw new Error(result.error || result.details || 'Scrape execution failed');
+          throw new Error(result.error || 'Failed');
         }
       } catch (err) {
         if (formAlert) {
           formAlert.className = 'alert-banner error';
-          formAlert.textContent = `Scraper Error: ${err.message}`;
+          formAlert.textContent = err.message;
           formAlert.style.display = 'block';
         }
       } finally {
@@ -661,49 +586,28 @@
     });
   }
 
-  // Manual Snapshot Ingest
   if (scrapeForm) {
     scrapeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const titleInput = document.getElementById('item-title');
-      const priceInput = document.getElementById('item-price');
-      const stockInput = document.getElementById('item-stock');
-
-      const title = titleInput ? titleInput.value.trim() : '';
-      const price = priceInput ? parseFloat(priceInput.value) : 0;
-      const stock = stockInput ? stockInput.value : 'In Stock';
-      const currency = '₹';
-
-      removedProductTitles.delete(title);
-      const now = new Date();
-      const scraped_at = now.toISOString().replace('T', ' ').substring(0, 19);
-      const payload = { title, price, stock, currency, scraped_at };
+      const title = document.getElementById('item-title')?.value.trim();
+      const price = parseFloat(document.getElementById('item-price')?.value || 0);
+      const stock = document.getElementById('item-stock')?.value || 'In Stock';
 
       try {
         const res = await fetch(`${API_BASE}/api/scrape`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ title, price, stock, currency: '₹' })
         });
-        const result = await res.json();
         if (res.ok) {
-          if (formAlert) {
-            formAlert.className = 'alert-banner success';
-            formAlert.textContent = `Snapshot stored as "${result.status || 'saved'}"!`;
-            formAlert.style.display = 'block';
-          }
           scrapeForm.reset();
           await loadItems();
-          setTimeout(() => {
-            if (addProductModal) addProductModal.classList.remove('open');
-          }, 1200);
-        } else {
-          throw new Error(result.error || result.message || 'Server error');
+          addProductModal?.classList.remove('open');
         }
       } catch (err) {
         if (formAlert) {
           formAlert.className = 'alert-banner error';
-          formAlert.textContent = `Ingest Failed: ${err.message}`;
+          formAlert.textContent = err.message;
           formAlert.style.display = 'block';
         }
       }
@@ -712,31 +616,30 @@
 
   if (refreshBtn) refreshBtn.addEventListener('click', () => loadItems());
 
-  // Helper Functions
+  // Dynamic CSV Download binding to live Vercel endpoint
+  document.querySelectorAll('a[href*="download-csv"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = `${API_BASE}/api/download-csv`;
+    });
+  });
+
   function extractDomain(title) {
     if (!title) return 'store.marketplace.com';
-    const t = title.toLowerCase();
-    if (t.includes('campus')) return 'campusshoes.com';
-    if (t.includes('realme')) return 'buy.realme.com';
-    if (t.includes('nike')) return 'nike.in';
-    if (t.includes('amazon')) return 'amazon.in';
-    return 'ecom.store.com';
+    if (title.toLowerCase().includes('realme')) return 'buy.realme.com';
+    if (title.toLowerCase().includes('campus')) return 'campusshoes.com';
+    if (title.toLowerCase().includes('nike')) return 'nike.in';
+    if (title.toLowerCase().includes('amazon')) return 'amazon.in';
+    return 'store.com';
   }
 
   function formatTimeAgo(dateStr) {
-    if (!dateStr) return 'Just now';
-    return dateStr.substring(11, 16) || 'Recently';
+    return dateStr ? dateStr.substring(11, 16) : 'Just now';
   }
 
   function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // Initial Load
   loadItems();
 })();
