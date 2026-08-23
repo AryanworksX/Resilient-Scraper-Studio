@@ -8,7 +8,7 @@ import json
 import urllib.parse
 import traceback
 import requests
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -16,7 +16,9 @@ from supabase import create_client, Client
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Complete CORS configuration across all methods & origins
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 BRIGHTDATA_API_KEY = os.getenv("BRIGHTDATA_API_KEY")
 BRIGHTDATA_COLLECTOR_ID = os.getenv("BRIGHTDATA_COLLECTOR_ID")
@@ -28,7 +30,26 @@ POLL_INTERVAL_S = 3
 MAX_WAIT_S = 45
 
 # ---------------------------------------------------------
-# 1. Supabase Persistence & Delta Mutation Engine
+# Global Preflight Handler & Response Interceptor
+# ---------------------------------------------------------
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        return response, 200
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-Requested-With"
+    response.headers["Access-Control-Allow-Methods"] = "GET,PUT,POST,DELETE,OPTIONS"
+    return response
+
+# ---------------------------------------------------------
+# 1. Supabase Persistence Engine
 # ---------------------------------------------------------
 _supabase_client = None
 
@@ -40,25 +61,6 @@ def get_supabase() -> Client | None:
         except Exception as e:
             print(f"[Supabase Init Warning]: {e}")
     return _supabase_client
-
-def write_to_csv_local(item: dict):
-    try:
-        file_exists = os.path.isfile(CSV_FILE_PATH)
-        fieldnames = ["product_name", "price", "currency", "stock_status", "scraped_at", "input_url"]
-        with open(CSV_FILE_PATH, mode="a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow({
-                "product_name": item.get("title", "Product SKU"),
-                "price": item.get("price", 0.0),
-                "currency": item.get("currency", "₹"),
-                "stock_status": item.get("stock", "In Stock"),
-                "scraped_at": item.get("scraped_at", time.strftime("%Y-%m-%d %H:%M:%S")),
-                "input_url": item.get("url", "")
-            })
-    except Exception as e:
-        print(f"[CSV Local Write Warning]: {e}")
 
 def save_and_calculate_deltas(item: dict) -> dict:
     sb = get_supabase()
@@ -94,11 +96,10 @@ def save_and_calculate_deltas(item: dict) -> dict:
             print(f"[Supabase Save Warning]: {e}")
 
     item["status"] = status
-    write_to_csv_local(item)
     return item
 
 # ---------------------------------------------------------
-# 2. Multi-Tier Resilient Price & DOM Extractor
+# 2. Resilient Parsing & Direct Fallbacks
 # ---------------------------------------------------------
 def clean_currency_symbol(val_str: str, url: str = "") -> str:
     c = str(val_str or "").strip().upper()
@@ -299,7 +300,6 @@ def run_extraction_pipeline(url: str) -> dict:
     if BRIGHTDATA_API_KEY and BRIGHTDATA_COLLECTOR_ID:
         try:
             headers = {"Authorization": f"Bearer {BRIGHTDATA_API_KEY}", "Content-Type": "application/json"}
-            print(f"[Bright Data] Queuing collector for: {url}")
             t_resp = requests.post(
                 f"https://api.brightdata.com/dca/trigger?collector={BRIGHTDATA_COLLECTOR_ID}&queue_next=1",
                 headers=headers,
@@ -331,7 +331,7 @@ def run_extraction_pipeline(url: str) -> dict:
                                     "scraped_at": time.strftime("%Y-%m-%d %H:%M:%S")
                                 }
         except Exception as e:
-            print(f"[Bright Data Warning, switching to fallback]: {e}")
+            print(f"[Bright Data Warning]: {e}")
 
     return resolve_dom_hydration(url)
 
@@ -389,25 +389,11 @@ def get_items_ledger():
     if sb:
         try:
             res = sb.table("items").select("*").order("id", desc=True).execute()
-            if res.data and len(res.data) > 0:
+            if res.data is not None:
                 return jsonify({"items": res.data}), 200
-        except Exception:
-            pass
-
-    csv_items = []
-    if os.path.exists(CSV_FILE_PATH):
-        with open(CSV_FILE_PATH, mode="r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for idx, r in enumerate(reader):
-                csv_items.append([
-                    idx + 1,
-                    r.get("product_name", "Item"),
-                    float(r.get("price", 0.0)),
-                    r.get("stock_status", "In Stock"),
-                    r.get("scraped_at", ""),
-                    r.get("currency", "₹")
-                ])
-    return jsonify({"items": csv_items}), 200
+        except Exception as e:
+            print(f"[Supabase Read Error]: {e}")
+    return jsonify({"items": []}), 200
 
 @app.route("/api/items/delete", methods=["POST"])
 def delete_product():
@@ -461,6 +447,7 @@ def download_scraped_csv():
     except Exception as e:
         return jsonify({"error": f"CSV export error: {str(e)}"}), 500
 
+# WSGI callable for Vercel
 app = app
 
 if __name__ == "__main__":
