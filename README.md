@@ -4,7 +4,7 @@ An autonomous price-tracking platform: Bright Data AI Flow builds and self-heals
 
 ---
 
-## ⚡ Overview
+# ⚡ Overview
 
 Resilient Scraper Studio solves a common problem with web scrapers: they break the moment a target site changes its layout. Instead of hand-written selectors that need constant maintenance, it uses Bright Data AI Collectors to build and automatically repair extraction logic when a site's HTML changes.
 
