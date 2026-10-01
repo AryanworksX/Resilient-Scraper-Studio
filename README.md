@@ -2,7 +2,7 @@
 
 An autonomous price-tracking platform: Bright Data AI Flow builds and self-heals the scrapers, a Python pipeline normalizes the data into a consistent schema, and Supabase stores it with real-time updates to the dashboard.
 
----
+----
 
 # ⚡ Overview
 
@@ -10,7 +10,7 @@ Resilient Scraper Studio solves a common problem with web scrapers: they break t
 
 Every scraped record flows through a Python normalization step into Supabase, which keeps an ongoing history of price changes, restocks, and catalog updates over time.
 
----
+----
 
 ## 🛠️ Architecture & Tech Stack
 
@@ -19,7 +19,7 @@ Every scraped record flows through a Python normalization step into Supabase, wh
 * **Database & Persistence:** Supabase (PostgreSQL)
 * **Frontend Dashboard:** Semantic HTML5, CSS3 Glassmorphism/Claymorphism, Chart.js, Three.js
 
----
+----
 
 ## 📂 Repository Structure
 
